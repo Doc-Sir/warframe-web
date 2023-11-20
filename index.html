@@ -1,20 +1,81 @@
-<html lang="en">
-
+html
+<!DOCTYPE html>
+<html>
 <head>
-		<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
-		<script type="text/javascript" src="app.js"></script>
-		<link rel="stylesheet" href="app.css" type="text/css" />
-
-	<meta charset="utf-8" />
-
-	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-	<script src="script.js"></script>
-
-	<title>Warframe Notification</title>
+  <title>Warframe Market Notification System</title>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
-
 <body>
-	<button id="btn-show-notification">Notify Me!</button>
-</body>
+  <label for="item-input">Item:</label>
+  <input type="text" id="item-input">
+  <button id="start-notification">Start Notification</button>
 
+  <script>
+    $(document).ready(function() {
+      let intervalId;
+
+      function searchItem() {
+        const item = $('#item-input').val();
+
+        // Make AJAX request to warframe.market API to search for the cheapest item
+        $.ajax({
+          url: `https://api.warframe.market/v1/items/${encodeURIComponent(item)}/orders`,
+          method: 'GET',
+          success: function(response) {
+            const cheapestOrder = response.payload.orders.filter(order => order.order_type === 'sell').sort((a, b) => a.platinum - b.platinum)[0];
+
+            if (cheapestOrder) {
+              const seller = cheapestOrder.user.ingame_name;
+              const price = cheapestOrder.platinum;
+
+              // Display notification
+              showNotification(`Cheapest ${item} found!\nSeller: ${seller}\nPrice: ${price} platinum`);
+            } else {
+              showNotification(`No ${item} found for sale.`);
+            }
+          },
+          error: function() {
+            showNotification('Error occurred while searching for item.');
+          }
+        });
+      }
+
+      function showNotification(message) {
+        if (Notification.permission !== 'granted') {
+          Notification.requestPermission();
+        } else {
+          const options = {
+            body: message,
+            icon: 'hi.jpg'
+          };
+          const notification = new Notification('Warframe Market Notification', options);
+
+          notification.onclick = function() {
+            window.open('https://warframe.market');
+          };
+        }
+      }
+
+      function startNotification() {
+        if (!Notification) {
+          console.log('Desktop notifications are not available in your browser.');
+          return;
+        }
+
+        if (Notification.permission !== 'granted') {
+          Notification.requestPermission();
+        }
+
+        intervalId = setInterval(searchItem, 600000); // 10 minutes interval
+      }
+
+      function stopNotification() {
+        clearInterval(intervalId);
+      }
+
+      $('#start-notification').on('click', startNotification);
+      $('#stop-notification').on('click', stopNotification);
+    });
+  </script>
+</body>
 </html>
